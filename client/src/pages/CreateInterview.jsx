@@ -3,48 +3,98 @@ import { Link, useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 const CreateInterview = () => {
+    const [mode, setMode] = useState("manual");
     const [role, setRole] = useState("");
     const [experience, setExperience] = useState("");
+    const [difficulty, setDifficulty] = useState("Intermediate");
+    const [questionCount, setQuestionCount] = useState("10");
     const [techStack, setTechStack] = useState("");
     const [description, setDescription] = useState("");
+    const [resumeFile, setResumeFile] = useState(null);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
     const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        setError("");
-
+    const handleManualSubmit = async () => {
         const technologies = techStack
             .split(",")
             .map((tech) => tech.trim())
             .filter((tech) => tech !== "");
 
         if (technologies.length === 0) {
+            throw new Error("Please enter at least one technology.");
+        }
+
+        const response = await api.post("/interviews", {
+            role,
+            experience: Number(experience),
+            techStack: technologies,
+            description,
+        });
+
+        return response.data.interview._id;
+    };
+
+    const handleResumeSubmit = async () => {
+        if (!resumeFile) {
+            throw new Error("Please upload a PDF resume before creating the interview.");
+        }
+
+        const formData = new FormData();
+        formData.append("resume", resumeFile);
+        formData.append("role", role);
+        formData.append("experience", Number(experience));
+        formData.append("difficulty", difficulty);
+        formData.append("questionCount", Number(questionCount));
+
+        const response = await api.post("/interviews/resume", formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
+
+        return response.data.interview._id;
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+
+        setError("");
+
+        if (!role.trim()) {
+            setError("Please enter a target job role.");
+            return;
+        }
+
+        if (experience === "" || Number(experience) < 0) {
+            setError("Please enter a valid experience value.");
+            return;
+        }
+
+        if (mode === "manual" && !techStack.trim()) {
             setError("Please enter at least one technology.");
+            return;
+        }
+
+        if (mode === "resume" && !resumeFile) {
+            setError("Please upload a resume PDF.");
             return;
         }
 
         try {
             setLoading(true);
 
-            const response = await api.post("/interviews", {
-                role,
-                experience: Number(experience),
-                techStack: technologies,
-                description
-            });
-
-            const interviewId = response.data.interview._id;
+            const interviewId = mode === "manual"
+                ? await handleManualSubmit()
+                : await handleResumeSubmit();
 
             navigate(`/interview/${interviewId}`);
-
         } catch (error) {
             setError(
                 error.response?.data?.message ||
+                error.message ||
                 "Failed to create interview"
             );
         } finally {
@@ -60,8 +110,7 @@ const CreateInterview = () => {
                     <h1>Create Interview</h1>
 
                     <p>
-                        Configure an AI-powered interview based
-                        on your experience and tech stack.
+                        Configure an AI-powered interview based on your target role and background.
                     </p>
                 </div>
 
@@ -83,28 +132,44 @@ const CreateInterview = () => {
                         </div>
                     )}
 
+                    <div className="mode-toggle">
+                        <button
+                            type="button"
+                            className={mode === "manual" ? "mode-option active" : "mode-option"}
+                            onClick={() => setMode("manual")}
+                        >
+                            Manual Interview
+                        </button>
+
+                        <button
+                            type="button"
+                            className={mode === "resume" ? "mode-option active" : "mode-option"}
+                            onClick={() => setMode("resume")}
+                        >
+                            Resume-Based Interview
+                        </button>
+                    </div>
+
                     <form onSubmit={handleSubmit}>
 
                         <div className="form-group">
                             <label htmlFor="role">
-                                Job Role
+                                Target Job Role
                             </label>
 
                             <input
                                 id="role"
                                 type="text"
-                                placeholder="e.g. Software Engineer"
+                                placeholder="e.g. Frontend Developer"
                                 value={role}
-                                onChange={(e) =>
-                                    setRole(e.target.value)
-                                }
+                                onChange={(e) => setRole(e.target.value)}
                                 required
                             />
                         </div>
 
                         <div className="form-group">
                             <label htmlFor="experience">
-                                Years of Experience
+                                Experience Level (Years)
                             </label>
 
                             <input
@@ -114,48 +179,113 @@ const CreateInterview = () => {
                                 max="50"
                                 placeholder="e.g. 2"
                                 value={experience}
-                                onChange={(e) =>
-                                    setExperience(e.target.value)
-                                }
+                                onChange={(e) => setExperience(e.target.value)}
                                 required
                             />
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="techStack">
-                                Tech Stack
+                            <label htmlFor="difficulty">
+                                Interview Difficulty
                             </label>
 
-                            <input
-                                id="techStack"
-                                type="text"
-                                placeholder="React, Node.js, MongoDB, JavaScript"
-                                value={techStack}
-                                onChange={(e) =>
-                                    setTechStack(e.target.value)
-                                }
-                                required
-                            />
-
-                            <span className="form-hint">
-                                Separate technologies using commas.
-                            </span>
+                            <select
+                                id="difficulty"
+                                value={difficulty}
+                                onChange={(e) => setDifficulty(e.target.value)}
+                                className="select-input"
+                            >
+                                <option value="Beginner">Beginner</option>
+                                <option value="Intermediate">Intermediate</option>
+                                <option value="Advanced">Advanced</option>
+                            </select>
                         </div>
 
                         <div className="form-group">
-                            <label htmlFor="description">
-                                Interview Description
+                            <label htmlFor="questionCount">
+                                Number of Questions
                             </label>
 
-                            <textarea
-                                id="description"
-                                placeholder="Describe what you want to focus on..."
-                                value={description}
-                                onChange={(e) =>
-                                    setDescription(e.target.value)
-                                }
-                            />
+                            <select
+                                id="questionCount"
+                                value={questionCount}
+                                onChange={(e) => setQuestionCount(e.target.value)}
+                                className="select-input"
+                            >
+                                <option value="5">5</option>
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                            </select>
                         </div>
+
+                        {mode === "manual" && (
+                            <>
+                                <div className="form-group">
+                                    <label htmlFor="techStack">
+                                        Tech Stack
+                                    </label>
+
+                                    <input
+                                        id="techStack"
+                                        type="text"
+                                        placeholder="React, Node.js, MongoDB, JavaScript"
+                                        value={techStack}
+                                        onChange={(e) => setTechStack(e.target.value)}
+                                    />
+
+                                    <span className="form-hint">
+                                        Separate technologies using commas.
+                                    </span>
+                                </div>
+
+                                <div className="form-group">
+                                    <label htmlFor="description">
+                                        Interview Description
+                                    </label>
+
+                                    <textarea
+                                        id="description"
+                                        placeholder="Describe what you want to focus on..."
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {mode === "resume" && (
+                            <div className="form-group">
+                                <label htmlFor="resume">
+                                    Upload Resume (PDF only)
+                                </label>
+
+                                <input
+                                    id="resume"
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file && file.size > 5 * 1024 * 1024) {
+                                            setError("Resume must be 5 MB or smaller.");
+                                            setResumeFile(null);
+                                            return;
+                                        }
+                                        setError("");
+                                        setResumeFile(file || null);
+                                    }}
+                                />
+
+                                <span className="form-hint">
+                                    Max file size: 5 MB. The PDF is read on the server and not stored.
+                                </span>
+
+                                {resumeFile && (
+                                    <div className="resume-file-name">
+                                        Selected file: {resumeFile.name}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         <div className="form-actions">
 
@@ -166,7 +296,9 @@ const CreateInterview = () => {
                             >
                                 {loading
                                     ? "Creating..."
-                                    : "Create Interview"}
+                                    : mode === "manual"
+                                        ? "Create Interview"
+                                        : "Create Resume Interview"}
                             </button>
 
                             <Link

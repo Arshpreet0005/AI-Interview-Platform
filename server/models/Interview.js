@@ -27,6 +27,31 @@ const questionSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+
+        followUpQuestion: {
+            type: String,
+            default: "",
+        },
+
+        followUpAnswer: {
+            type: String,
+            default: "",
+        },
+
+        followUpScore: {
+            type: Number,
+            default: 0,
+        },
+
+        followUpFeedback: {
+            type: String,
+            default: "",
+        },
+
+        followUpImprovement: {
+            type: String,
+            default: "",
+        },
     },
     {
         _id: false,
@@ -93,6 +118,27 @@ const interviewSchema = new mongoose.Schema(
             type: String,
             default: "",
         },
+
+        proctoringEvents: [
+            {
+                eventType: {
+                    type: String,
+                    required: true,
+                },
+                timestamp: {
+                    type: Date,
+                    default: Date.now,
+                },
+                duration: {
+                    type: Number,
+                    default: 0,
+                },
+                details: {
+                    type: String,
+                    default: "",
+                },
+            },
+        ],
 
         completed: {
             type: Boolean,
