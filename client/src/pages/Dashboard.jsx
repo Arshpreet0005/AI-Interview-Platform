@@ -278,9 +278,11 @@ const Dashboard = () => {
         .slice(0, 3)
         .map(([label, score]) => ({ label, score }));
 
-    const fetchImprovementPlan = async () => {
+    useEffect(() => {
+    const fetchPlan = async () => {
         if (!completedInterviews.length) {
             setPlan(null);
+            setPlanError("");
             return;
         }
 
@@ -301,15 +303,34 @@ const Dashboard = () => {
         }
     };
 
+    fetchPlan();
+}, [completedInterviews.length]);
+
     useEffect(() => {
-        if (completedInterviews.length) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            fetchImprovementPlan();
-        } else {
-            setPlan(null);
-            setPlanError("");
+    const fetchPlan = async () => {
+        if (!completedInterviews.length) {
+            return;
         }
-    }, [completedInterviews.length]);
+
+        try {
+            const response = await api.get("/interviews/improvement-plan");
+            setPlan(response.data.plan || null);
+            setPlanError("");
+        } catch (error) {
+            if (error.response?.status === 404) {
+                setPlan(null);
+                return;
+            }
+
+            setPlanError(
+                error.response?.data?.message ||
+                "Unable to load your improvement plan."
+            );
+        }
+    };
+
+    fetchPlan();
+}, [completedInterviews.length]);
 
     const generateImprovementPlan = async () => {
         if (!completedInterviews.length) {
