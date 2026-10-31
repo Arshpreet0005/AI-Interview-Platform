@@ -9,6 +9,11 @@ const InterviewResult = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
 
+    const proctoringEvents = interview?.proctoringEvents || [];
+    const faceNotDetectedEvents = proctoringEvents.filter((event) => event.eventType === "face_not_detected");
+    const multipleFaceEvents = proctoringEvents.filter((event) => event.eventType === "multiple_faces");
+    const totalEventDuration = proctoringEvents.reduce((sum, event) => sum + (Number(event.duration) || 0), 0);
+
     useEffect(() => {
         const fetchInterview = async () => {
             try {
@@ -259,6 +264,58 @@ const InterviewResult = () => {
             </div>
 
 
+            {/* Proctoring Summary */}
+
+            <div className="recommendation-card">
+                <p className="card-label">
+                    PROCTORING SUMMARY
+                </p>
+
+                <h2>
+                    Camera observations only
+                </h2>
+
+                <p>
+                    These are camera-monitoring observations recorded in the browser. They do not necessarily indicate cheating and are not used to disqualify the candidate.
+                </p>
+
+                <div className="proctoring-summary-grid">
+                    <div>
+                        <span className="info-label">Camera monitoring</span>
+                        <strong>{proctoringEvents.length > 0 ? "Recorded" : "No events recorded"}</strong>
+                    </div>
+                    <div>
+                        <span className="info-label">Face not detected</span>
+                        <strong>{faceNotDetectedEvents.length}</strong>
+                    </div>
+                    <div>
+                        <span className="info-label">Multiple faces</span>
+                        <strong>{multipleFaceEvents.length}</strong>
+                    </div>
+                    <div>
+                        <span className="info-label">Total event duration</span>
+                        <strong>{Math.round(totalEventDuration / 1000)}s</strong>
+                    </div>
+                </div>
+
+                {proctoringEvents.length ? (
+                    <div className="proctoring-timeline">
+                        {proctoringEvents.map((event, index) => (
+                            <div className="proctoring-timeline-item" key={`${event.eventType}-${index}`}>
+                                <div className="timeline-dot" />
+                                <div>
+                                    <strong>{event.eventType.replace(/_/g, " ")}</strong>
+                                    <div>{new Date(event.timestamp).toLocaleString()}</div>
+                                    <small>{event.details || `Duration: ${event.duration || 0} ms`}</small>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p>No proctoring events were recorded.</p>
+                )}
+            </div>
+
             {/* Recommendation */}
 
             <div className="recommendation-card">
@@ -467,13 +524,55 @@ const InterviewResult = () => {
                                             {question.improvement ||
                                                 "No improvement suggestion available."}
                                         </p>
-
                                     </div>
 
-                                </div>
-                            );
-                        }
-                    )}
+                                {question.followUpQuestion && (
+                                    <>
+                                        <div className="answer-block follow-up-block">
+                                            <p className="answer-label">
+                                                FOLLOW-UP QUESTION
+                                            </p>
+                                            <p>
+                                                {question.followUpQuestion}
+                                            </p>
+                                        </div>
+
+                                        <div className="answer-block follow-up-block">
+                                            <p className="answer-label">
+                                                FOLLOW-UP ANSWER
+                                            </p>
+                                            <p>
+                                                {question.followUpAnswer ||
+                                                    "No follow-up answer provided."}
+                                            </p>
+                                        </div>
+
+                                        <div className="feedback-block follow-up-block">
+                                            <p className="answer-label">
+                                                FOLLOW-UP FEEDBACK
+                                            </p>
+                                            <p>
+                                                {question.followUpFeedback ||
+                                                    "No follow-up feedback available."}
+                                            </p>
+                                        </div>
+
+                                        <div className="improvement-block follow-up-block">
+                                            <p className="answer-label">
+                                                FOLLOW-UP IMPROVEMENT
+                                            </p>
+                                            <p>
+                                                {question.followUpImprovement ||
+                                                    "No follow-up improvement suggestion available."}
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
+                            </div>
+
+                        );
+                    })}
 
                 </div>
 
